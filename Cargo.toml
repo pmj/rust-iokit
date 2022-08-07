@@ -1,0 +1,11 @@
+[package]
+name = "iokit"
+version = "0.1.0"
+authors = ["Phil Dennis-Jordan <phil@philjordan.eu>"]
+
+[dependencies]
+IOKit-sys = { git = "https://github.com/pmj/iokit-sys" }
+CoreFoundation-sys = "*"
+core-foundation = "*"
+libc = "*"
+dispatch = { path = "../rust-dispatch" }
