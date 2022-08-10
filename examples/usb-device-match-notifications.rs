@@ -1,3 +1,6 @@
+extern crate iokit;
+use iokit::IORegistryEntry;
+
 fn main()
 {
 	let notify_port = iokit::NotificationPort::new();
@@ -7,17 +10,10 @@ fn main()
 
 	let mut matching_notification = iokit::service_add_matching_notification(
 		&notify_port, IOKit_sys::kIOMatchedNotification(), matching_dict,
-		|service: IOKit_sys::io_object_t|
+		|service: iokit::IOServiceRef|
 		{
-			let mut path_buffer : Vec<libc::c_char> = vec![0; 512]; // io_string_t
-			let path =
-				unsafe
-				{
-					IOKit_sys::IORegistryEntryGetPath(service, IOKit_sys::kIOServicePlane(), path_buffer.as_mut_ptr());
-					let path_cstr = std::ffi::CStr::from_ptr(path_buffer.as_ptr());
-					path_cstr.to_str().unwrap().to_owned()
-				};
-			println!("{}",path);
+			let path = service.get_path(iokit::RegistryPlane::Service);
+			println!("{}",path.unwrap());
 		}).unwrap();
 	
 	matching_notification.start_handling_matches();

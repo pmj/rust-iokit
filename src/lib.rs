@@ -9,7 +9,9 @@ use cf::dictionary::CFMutableDictionary;
 use std::ffi::CString;
 
 mod notificationport;
+mod ioobject;
 pub use notificationport::*;
+pub use self::ioobject::*;
 
 pub fn service_matching(class_name: &str) -> CFMutableDictionary
 {
@@ -23,7 +25,7 @@ pub fn service_matching(class_name: &str) -> CFMutableDictionary
 pub struct MatchingNotification<'port>
 {
 	match_iterator: io::io_iterator_t,
-	callback: Box<Box<dyn FnMut(io::io_service_t)>>,
+	callback: Box<Box<dyn FnMut(IOServiceRef)>>,
 	notification_port: std::marker::PhantomData<&'port NotificationPort>,
 }
 
@@ -40,8 +42,7 @@ impl <'port> MatchingNotification<'port>
 				{
 					break;
 				}
-				(**self.callback)(obj);
-				io::IOObjectRelease(obj);
+				(**self.callback)(IOServiceRef::with_owned_service(obj));
 			}
 		}
 	}
@@ -59,9 +60,9 @@ impl<'port> Drop for MatchingNotification<'port>
 	
 }
 
-extern "C" fn matching_notification_callback(refcon: *mut ::libc::c_void, iterator: io::io_iterator_t)
+extern "C" fn matching_service_notification_callback(refcon: *mut ::libc::c_void, iterator: io::io_iterator_t)
 {
-    let closure: &mut Box<dyn FnMut(io::io_service_t)> = unsafe { std::mem::transmute(refcon) };
+  let closure: &mut Box<dyn FnMut(io::io_service_t)> = unsafe { std::mem::transmute(refcon) };
 
 	loop
 	{
@@ -80,14 +81,14 @@ extern "C" fn matching_notification_callback(refcon: *mut ::libc::c_void, iterat
 
 pub fn service_add_matching_notification<'port, F>(port: &'port NotificationPort, notification_type: *const libc::c_char, matching_dict: CFMutableDictionary, match_callback: F)
 	-> Result<MatchingNotification<'port>, io::IOReturn>
-	where F: FnMut(io::io_service_t) -> (),
+	where F: FnMut(IOServiceRef) -> (),
 	      F: 'static
 {
 	let mut iterator : io::io_iterator_t = io::IO_OBJECT_NULL;
 
-	let callback : Box<Box<dyn FnMut(io::io_service_t)>> = Box::new(Box::new(match_callback));
-	let callback_ptr : *const Box<dyn FnMut(io::io_service_t)> = &*callback;
-	let result = unsafe { io::IOServiceAddMatchingNotification(port.as_ptr(), notification_type, matching_dict.as_concrete_TypeRef() as  *const CoreFoundation_sys::__CFDictionary, matching_notification_callback, callback_ptr as *mut libc::c_void, &mut iterator) };
+	let callback : Box<Box<dyn FnMut(IOServiceRef)>> = Box::new(Box::new(match_callback));
+	let callback_ptr : *const Box<dyn FnMut(IOServiceRef)> = &*callback;
+	let result = unsafe { io::IOServiceAddMatchingNotification(port.as_ptr(), notification_type, matching_dict.as_concrete_TypeRef() as  *const CoreFoundation_sys::__CFDictionary, matching_service_notification_callback, callback_ptr as *mut libc::c_void, &mut iterator) };
 	std::mem::forget(matching_dict);
 
 	if result == io::kIOReturnSuccess
