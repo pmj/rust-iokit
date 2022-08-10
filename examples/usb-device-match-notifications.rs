@@ -1,5 +1,5 @@
 extern crate iokit;
-use iokit::IORegistryEntry;
+use iokit::*;
 
 fn main()
 {
@@ -14,6 +14,7 @@ fn main()
 		{
 			let path = service.get_path(iokit::RegistryPlane::Service);
 			println!("{}",path.unwrap());
+			service.release();
 		}).unwrap();
 	
 	matching_notification.start_handling_matches();

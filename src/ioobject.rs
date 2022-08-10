@@ -50,6 +50,7 @@ impl Drop for IOObjectBaseRef
 pub trait IOObject
 {
 	fn base_ref(&self) -> &IOObjectBaseRef;
+	fn release(self);
 }
 
 pub trait IORegistryEntry : IOObject
@@ -87,6 +88,10 @@ impl IOObject for IORegistryEntryRef
 	{
 		&self.obj_ref
 	}
+	fn release(self)
+	{
+		self.obj_ref.release();
+	}
 }
 
 impl IORegistryEntry for IORegistryEntryRef
@@ -111,6 +116,10 @@ impl IOObject for IOServiceRef
 	fn base_ref(&self) -> &IOObjectBaseRef
 	{
 		&self.obj_ref
+	}
+	fn release(self)
+	{
+		self.obj_ref.release();
 	}
 }
 impl IORegistryEntry for IOServiceRef
