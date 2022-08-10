@@ -22,11 +22,11 @@ pub fn service_matching(class_name: &str) -> CFMutableDictionary
 	}
 }
 
-pub struct MatchingNotification<'port>
+pub struct MatchingNotification<'port_and_callback>
 {
 	match_iterator: io::io_iterator_t,
-	callback: Box<Box<dyn FnMut(IOServiceRef)>>,
-	notification_port: std::marker::PhantomData<&'port NotificationPort>,
+	callback: Box<Box<dyn FnMut(IOServiceRef) + 'port_and_callback>>,
+	notification_port: std::marker::PhantomData<&'port_and_callback NotificationPort>,
 }
 
 impl <'port> MatchingNotification<'port>
@@ -79,10 +79,15 @@ extern "C" fn matching_service_notification_callback(refcon: *mut ::libc::c_void
 	}
 }
 
-pub fn service_add_matching_notification<'port, F>(port: &'port NotificationPort, notification_type: *const libc::c_char, matching_dict: CFMutableDictionary, match_callback: F)
-	-> Result<MatchingNotification<'port>, io::IOReturn>
+pub fn service_add_matching_notification<'port_and_callback, F>(
+		port: &'port_and_callback NotificationPort,
+		notification_type: *const libc::c_char,
+		matching_dict: CFMutableDictionary,
+		match_callback: F)
+	-> Result<MatchingNotification<'port_and_callback>, io::IOReturn>
 	where F: FnMut(IOServiceRef) -> (),
-	      F: 'static
+	      F: 'port_and_callback,
+	      F: Send
 {
 	let mut iterator : io::io_iterator_t = io::IO_OBJECT_NULL;
 
